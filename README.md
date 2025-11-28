@@ -38,7 +38,7 @@ The verifier will:
 
 ---
 
-# 🗂 **Folder Structure**
+#  **Folder Structure**
 
 ```
 local-simulation/
@@ -140,7 +140,7 @@ qr/job-<jobId>.png
 
 ---
 
-## ▶ **Run On-Chain Writer**
+##  **Run On-Chain Writer**
 
 ```
 npm run write
@@ -167,7 +167,7 @@ Used internally by the writer —should be modular for reuse later as real Lambd
 
 ---
 
-# 🔍 **4. verifyReport.js — Full Authenticity Verification**
+# **4. verifyReport.js — Full Authenticity Verification**
 
 This script simulates the **verifyHashRecord Lambda** used by users to confirm report integrity.
 
@@ -236,7 +236,7 @@ Report may have been modified.
 
 ---
 
-## ▶ **Run Verifier**
+##  **Run Verifier**
 
 ```
 npm run verify
@@ -244,7 +244,7 @@ npm run verify
 
 ---
 
-# 🔄 **End-to-End Flow Summary**
+# **End-to-End Flow Summary**
 
 | Step | Script             | Purpose                                      |
 | ---- | ------------------ | -------------------------------------------- |
