@@ -1,40 +1,60 @@
 
-#  **Local Simulation Environment — On-Chain Report Writer + qrGenerator + Verifier**
 
-This  repo provides a **full offline testing environment** that simulates how system will:
+#  **Local Simulation Environment — On-Chain Report Writer + QR Generator + Verifier**
 
-1. **Generate a SHA-256 hash** for a grain-analysis report
-2. **Store the hash on-chain** in  upgradeable Smart Contract
-3. **Generate a tamper-proof QR code** containing `{ jobId, txHash }`
-4. **Verify authenticity offline** by:
+This repository provides a **complete end-to-end offline simulation** of production traceability workflow.
 
-   * Fetching jobId from QR and fetch JobData accordingly
-   * Recomputing the hash of data
-   * Fetching all on-chain hashes for the jobId
-   * Comparing them for a match
-
-
-This simulation mirrors how your future AWS Lambda functions will work — but runs **entirely locally** with  Hardhat localhost blockchain.
+It mirrors exactly how your AWS Lambda + Hedera integration will function — but runs **entirely locally** using a Hardhat blockchain.
 
 ---
 
-#  Folder Structure
+#  **What This Simulation Does**
+
+This system allows you to:
+
+### **1. Hash a jobData(grain-analysis report)**
+
+Including embedded CSVs and metadata
+→ Using the same hashing algorithm your Lambda function will use.
+
+### **2. Store the hash on-chain**
+
+Using your **upgradeable proxy smart contract** deployed on a local Hardhat node.
+
+### **3. Generate a QR code**
+
+Containing `{ jobId, txHash }`.
+This QR represents a **tamper-proof proof of authenticity** for the stored report.
+
+### **4. Verify authenticity by scanning the QR**
+
+The verifier will:
+
+✔ Decode QR → extract jobId
+✔ Load the corresponding `jobs/<jobId>.json` report
+✔ Recompute the exact same hash
+✔ Fetch stored reports from the smart contract
+✔ Compare hashes → **Authentic / Tampered** result
+
+---
+
+# 🗂 **Folder Structure**
 
 ```
 local-simulation/
 │
 ├── ABI/
-│   └── grams-v1.json             # Pure ABI array copied from ./artifacts of smart-contract codebase
+│   └── grams-v1.json           # Pure ABI array of deployed contract
 │
 ├── jobs/
-│   └── <jobId>.json              # Input sample jobData
+│   └── <jobId>.json             # Input grain-analysis report
 │
 ├── qr/
-│   └── job-<jobId>.png           # Auto-generated QR (after write)
+│   └── job-<jobId>.png          # Auto-generated QR code after writing
 │
-├── onChainWriter.js              #  hashOnchainRecord lambda
-├── qrGenerator.js                #  generates QR codes for jobId/txHash
-├── verifyReport.js               #  verifyHashRecord lambda
+├── onChainWriter.js             # Simulates hashOnchainRecord Lambda
+├── qrGenerator.js               # Generates QR codes (used inside writer)
+├── verifyReport.js              # Simulates verifyHashRecord Lambda
 │
 ├── package.json
 └── .env
@@ -42,231 +62,288 @@ local-simulation/
 
 ---
 
-# ⚙️ **Environment Variables (`.env`)**
+#  **Environment Variables (`.env`)**
 
 ```
 RPC_URL=http://127.0.0.1:8545
-PRIVATE_KEY= <your-localhost-private-key>
-ProxyContract_localhost= <deployed-proxy-address>
-SAMPLE_JOB_ID=649223be-d198-40f1-b5ab-ec200b43941b 
+PRIVATE_KEY= <your hardhat account private key>
+ProxyContract_localhost= <your deployed proxy contract address>
+SAMPLE_JOB_ID=649223be-d198-40f1-b5ab-ec200b43941b
 ```
 
-Make sure:
+### Important Notes
 
-* PRIVATE_KEY is from Hardhat local accounts
-* ProxyContract_localhost is your deployed proxy contract
+* `PRIVATE_KEY` must be from your **local Hardhat node**
+* `ProxyContract_localhost` must be the **proxy address from your Hardhat deployment**
+* `SAMPLE_JOB_ID` must match a `.json` file inside `/jobs`
 
 ---
 
-#  **1. Report Hash Generation Logic**
+#  **1. Hash Generation Logic (Core of the System)**
 
-Both onChainWriter.js and verifyReport.js share the SAME hashing logic:
+Both **onChainWriter.js** and **verifyReport.js** use *identical hashing logic*:
 
-###  Extract report JSON
+### Steps:
 
-###  Fetch 3 CSVs:
+1. Convert `jobId.json` into normalized JSON
+2. Fetch embedded CSVs:
 
-* cumulative_analysis_csv
-* particle_distribution_csv
-* rejection_analysis_display_csv
-
-###  Normalize line endings (`\n`)
-
-###  Merge JSON + CSV
-
-###  Hash using SHA-256
+   * cumulative_analysis_csv
+   * particle_distribution_csv
+   * rejection_analysis_display_csv
+3. Combine JSON + CSV contents
+4. Normalize line endings (`\n`)
+5. Generate SHA-256 hash:
 
 ```js
 "0x" + crypto.createHash("sha256")
              .update(normalizedData, "utf8")
-             .digest("hex")
+             .digest("hex");
 ```
 
-**Important:**
-This ensures **Server-side (Lambda)** and **client-side verification** always use the exact same hashing method → guaranteeing authenticity.
+### Why this matters
+
+This ensures **verification always matches the original write**, preventing false positives during authenticity checks.
 
 ---
 
-#  **2. onChainWriter.js — Write Report On-Chain**
+#  **2. onChainWriter.js — Store Report On-Chain**
 
-This script:
+This script simulates the **hashOnchainRecord Lambda**:
 
-### 1 Loads ABI
+### It performs:
 
-### 2 Loads jobData from `jobs/<jobId>.json`
-
-### 3 Generates hash using full JSON + CSV contents
-
-### 4 Connects to the local blockchain (Hardhat RPC)
-
-### 5 Writes report on-chain via:
+1. Load `jobs/<jobId>.json`
+2. Generate hash using JSON + CSV data
+3. Connect to local Hardhat blockchain via ethers.js
+4. Call your upgradeable contract:
 
 ```solidity
 storeReport(jobId, reportHash, productName, username)
 ```
 
-### 6 Fetches the newly updated on-chain entry
-
-### 7 Generates a QR Code containing:
+5. Fetch the newly stored on-chain record
+6. Generate a QR code containing:
 
 ```json
 {
-  "jobId": "...",
-  "txHash": "0x..."
+  "jobId": "<jobId>",
+  "txHash": "<transaction_hash>"
 }
 ```
 
-Stored at:
+Saved to:
 
 ```
 qr/job-<jobId>.png
 ```
 
-###  **Run:**
+---
+
+## ▶ **Run On-Chain Writer**
 
 ```
 npm run write
 ```
 
+This will:
+
+✔ Hash your job report  
+✔ Store report in your contract  
+✔ Generate QR code automatically
+
 ---
 
-#  **3. QR Code Generation (qrGenerator.js)**
+#  **3. qrGenerator.js — QR Code Module**
 
-If extracted into a module, `qrGenerator.js`:
+`qrGenerator.js` is a reusable QR module that:
 
 * Accepts `{ jobId, txHash }`
-* Produces a QR PNG file under `/qr`
-* Used later during verification
+* Serializes into JSON
+* Generates a QR PNG file
+* Stores it inside `/qr`
 
-It uses:
+Used internally by the writer —should be modular for reuse later as real Lambda.
+
+---
+
+# 🔍 **4. verifyReport.js — Full Authenticity Verification**
+
+This script simulates the **verifyHashRecord Lambda** used by users to confirm report integrity.
+
+### Verification Steps:
+
+---
+
+### **Step 1 — Read QR**
+
+Decode PNG → extract jobId + txHash:
 
 ```js
-QRCode.toFile("qr/job-<jobId>.png", qrPayload);
+const { jobId, txHash } = await parseQR("qr/job-<jobId>.png");
 ```
 
 ---
 
-#  **4. verifyReport.js — Full Local Verification**
+### **Step 2 — Load matching report file**
 
-The verifier performs **complete authenticity testing**:
+Loads:
 
----
-
-### 🔍 Step 1: Decode QR
-
-```js
-const { jobId, txHash } = parseQR("qr/job-<jobId>.png");
+```
+jobs/<jobId>.json
 ```
 
 ---
 
-###  Step 2: Load local JSON again (same data used for writing)
+### **Step 3 — Recompute SHA-256 hash**
 
-```js
-jobData = loadJobFromFile(jobId);
-```
+Uses identical logic as writer.
 
 ---
 
-###  Step 3: Recompute SHA-256 hash
+### **Step 4 — Fetch on-chain records**
 
-Ensures the local data hasn’t changed.
+Your contract supports **multiple historical reports** under the same jobId.
 
----
-
-###  Step 4: Fetch ALL on-chain reports for this jobId
+This script fetches them all:
 
 ```js
 const reports = await contract.getReports(jobId);
 ```
 
-Since your smart-contract allows **multiple historical reports** under the same jobId, we:
-
-* Print all on-chain hashes
-* Compare each of them
-* Highlight the matched one
-
 ---
 
-###  Step 5: Compare → Match or Mismatch
+### **Step 5 — Hash comparison**
 
-If a match is found:
+Checks if **any** on-chain reportHash matches the recomputed hash.
 
-```
-Verified ON-CHAIN
-Report hash matches.
-No tampering detected.
-```
-
-❌ If no match:
+#### If matched:
 
 ```
-❌ Verification Failed
-Local hash != On-chain hash
-Report may have been modified
+✅ Verified on Blockchain
+Hash matches. No tampering detected.
+```
+
+Shows timestamp, analyst, productName, stored value.
+
+#### If failed:
+
+```
+🚫 Verification Failed
+Local hash does not match any on-chain entry.
+Report may have been modified.
 ```
 
 ---
 
-#  End-to-End Flow Summary
+## ▶ **Run Verifier**
 
-| Step | Script             | Purpose                                                        |
-| ---- | ------------------ | -------------------------------------------------------------- |
-| 1    | `onChainWriter.js` | Generate hash → Write on-chain → Generate QR                   |
-| 2    | `verifyReport.js`  | Decode QR → Recompute hash → Fetch on-chain → Match comparison |
-| 3    | Result             | Authentic report OR tampering detected                         |
+```
+npm run verify
+```
 
 ---
 
-#  **Why This Simulation Exists**
+# 🔄 **End-to-End Flow Summary**
 
-This environment is designed to perfectly mirror the real AWS Lambda flow:
-
-###  **Further Lambda will:**
-
-* Fetch ABI from S3
-* Generate hash from JSON + CSV
-* Write to blockchain
-* Store txHash back to DynamoDB
-
-###  **The verification Lambda will:**
-
-* Decode QR -> Fetch jobId
-* Recompute jobData hash locally
-* Fetch on-chain reports 
-* Validate integrity
-
-By testing locally, you guarantee:
-
-* Consistent hashing
-* Proper smart-contract interactions
-* Correct QR verification
-* Smooth future integration with AWS
+| Step | Script             | Purpose                                      |
+| ---- | ------------------ | -------------------------------------------- |
+| 1    | `onChainWriter.js` | Hash → Write → Generate QR                   |
+| 2    | `verifyReport.js`  | Decode QR → Recompute Hash → Verify on-chain |
+| 3    | Result             | Authentic OR Tampered                        |
 
 ---
 
-#  **How to Run Everything**
+#  **Setup & Installation**
 
-## 0 Run the hardhat node in the smart contract-codebase or using the hardhat environment 
+## 1. Clone Repo
 
 ```
-npm run node / npx hardhat node
+git clone https://github.com/PrinceTitiya/grams-verifier-flow.git
+cd grams-verifier-flow
 ```
 
-### 0.0 Deploy the contract
+---
+
+## 2. Install Dependencies
+
+```
+npm install
+```
+
+---
+
+## 3. Start Local Blockchain (in smart-contract repo)
+
+In **your smart contract codebase**:
+
+```
+npx hardhat node
+```
+
+or
+
+```
+npm run node
+```
+
+---
+
+## 4. Deploy V1 Contract
+
+Still inside smart-contract repo:
+
 ```
 npm run deploy-v1
 ```
 
+Copy the **proxy address** into `.env` of this simulation.
 
-## 1 Write Report on Chain
+---
+
+## 5. Configure `.env`
+
+Example:
+
+```
+RPC_URL=http://127.0.0.1:8545
+PRIVATE_KEY=0x...
+ProxyContract_localhost=0x...
+SAMPLE_JOB_ID=649223be-d198-40f1-b5ab-ec200b43941b
+```
+
+---
+
+# ▶ **Run Everything**
+
+### **Write Report to Blockchain**
 
 ```
 npm run write
 ```
 
-## 2️ Verify Report Authenticity
+### **Verify Report Authenticity**
 
 ```
 npm run verify
 ```
+
+---
+
+#  **Summary**
+
+1.  When a new grain-analysis `jobId.json` is generated →
+**onChainWriter.js** hashes it and stores that hash on-chain.
+
+2. The writer then produces a **QR code** containing `{ jobId, txHash }`.
+
+33.  When verification is needed →
+A user scans the QR and **verifyReport.js**:
+
+* Extracts jobId from the QR
+* Recomputes the hash jobData of fetched jobId
+* Fetches all reports stored on-chain for that jobId
+* Compares the hashes
+
+4. If hashes match → report is **authentic**.  
+If not → **tampering or mismatch detected**.
