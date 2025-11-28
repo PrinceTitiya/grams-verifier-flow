@@ -1,0 +1,16 @@
+{
+  "name": "local-simulation",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "write": "node onChainWriter.js",
+    "verify": "node verifyReport.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4"
+  }
+}

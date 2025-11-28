@@ -1,0 +1,26 @@
+{
+ "jobId": "649223be-d198-40f1-b5ab-ec200b43941b",
+ "createdAt": 1653945234.523,
+ "grainId": "20",
+ "info": {
+  "batchId": "",
+  "customerName": "",
+  "lotNumber": ""
+ },
+ "jobStatus": "JOB_COMPLETED",
+ "orgId": "1",
+ "productName": "L10_GRAIN_ANALYSIS",
+ "profileId": "1",
+ "results": {
+  "avg_length": "4.55",
+  "avg_length_of_broken_grains": "96.56",
+  "avg_width": "2.95",
+  "cumulative_analysis_csv": "https://grams-images-bucket.s3-us-west-2.amazonaws.com/output/649223be-d198-40f1-b5ab-ec200b43941b/cumulativeResultsForDisplay.csv",
+  "grain_count": "670",
+  "particle_distribution_csv": "https://grams-images-bucket.s3-us-west-2.amazonaws.com/output/649223be-d198-40f1-b5ab-ec200b43941b/particleGroupsForDisplay.csv",
+  "rejection_analysis_display_csv": "https://grams-images-bucket.s3-us-west-2.amazonaws.com/output/649223be-d198-40f1-b5ab-ec200b43941b/rejectionAnalysisForDisplay.csv",
+  "whiteness_index": ""
+ },
+ "updatedAt": 1653945234.523,
+ "username": "gurveerl10"
+}
